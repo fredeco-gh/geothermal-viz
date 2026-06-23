@@ -25,32 +25,8 @@
         window.parent.postMessage(payload, agentOrigin);
     }
 
-    // Finds the well feature whose well/park number matches `identifier` exactly
-    // (case-insensitive), falling back to a substring match over a few
-    // human-identifying fields (area name, description, contractor) so a vaguer
-    // request ("the well near the Oslo park") still has a chance of resolving.
-    function findWell(identifier) {
-        const features = window.GeothermalViz?.state?.data?.features || [];
-        const needle = String(identifier || "").trim().toLowerCase();
-        if (!needle) return null;
-
-        const exactFields = ["brønnNr", "brønnParkNr"];
-        for (const feature of features) {
-            if (exactFields.some((f) => String(feature.properties[f] ?? "").toLowerCase() === needle)) {
-                return feature;
-            }
-        }
-
-        const looseFields = [...exactFields, "brønnpOmrNavn", "beskrivelse", "oppdragstaker"];
-        return (
-            features.find((feature) =>
-                looseFields.some((f) => String(feature.properties[f] ?? "").toLowerCase().includes(needle))
-            ) || null
-        );
-    }
-
     // One handler per `ui` action name a jutul-agent tool can emit. Add a case
-    // here for every new tool added in capability.py's _TOOL_FACTORIES.
+    // here for every new tool added in capability.py's tools tuple.
     const ACTIONS = {
         set_map_view(payload) {
             const map = window.GeothermalViz && window.GeothermalViz.state.map;
@@ -58,17 +34,16 @@
             map.flyTo({ center: [payload.lon, payload.lat], zoom: payload.zoom });
         },
         go_to_well(payload) {
-            const identifier = payload && payload.identifier;
-            const feature = findWell(identifier);
-            if (!feature) {
-                sendToAgent({ event: "goToWellNotFound", identifier });
-                return;
-            }
+            // The well lookup already happened on the Python side (capability.py's
+            // go_to_well queries geothermal-viz's own data API) — this action only
+            // ever arrives for a well that was actually found, so there's no
+            // not-found case to handle here.
+            const feature = payload && payload.feature;
+            if (!feature) return;
             const [lon, lat] = feature.geometry.coordinates;
             window.GeothermalViz.state.map.flyTo({ center: [lon, lat], zoom: 17 });
-            // Reuses the same path a real click takes — its wellSelected event is
-            // already relayed below, so the agent sees confirmation of where it
-            // landed without a second, redundant message here.
+            // Reuses the same path a real click takes, so the popup/sidebar and the
+            // wellSelected relay below behave identically either way.
             window.GeothermalViz.selectWell(feature, [lon, lat]);
         },
     };
