@@ -496,6 +496,7 @@ window.GeothermalViz = {
     registerExtension,
     emitEvent,
     connectToJulia,
+    selectWell,
     CONFIG
 };
 
