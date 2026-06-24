@@ -167,6 +167,20 @@ using JSON3
         errors = validate_simulation_params(setup)
         @test !isempty(errors)
         @test any(e -> e[1] == "well_depth", errors)
+
+        # Invalid: BTES sector left with only one well (Fimbul.btes crashes on
+        # this rather than handling it, so it must be rejected before reaching it)
+        props2 = Dict("layer" => "BrønnPark", "brønnParkNr" => "1")
+        setup2 = well_to_simulation_params(props2)
+        setup2["parameters"]["num_wells_btes"] = 8
+        setup2["parameters"]["num_sectors"] = 6
+        errors2 = validate_simulation_params(setup2)
+        @test !isempty(errors2)
+        @test any(e -> e[1] == "num_wells_btes", errors2)
+
+        # Valid: enough wells per sector
+        setup2["parameters"]["num_wells_btes"] = 12
+        @test isempty(validate_simulation_params(setup2))
     end
 
     @testset "Simulation — Mock" begin

@@ -308,6 +308,7 @@ Returns a list of `(param_key, error_message)` tuples; empty if valid.
 """
 function validate_simulation_params(params::AbstractDict)
     errors = Tuple{String,String}[]
+    case_type = get(params, "case_type", nothing)
     parameters = get(params, "parameters", params)
 
     for (key, val) in parameters
@@ -323,6 +324,23 @@ function validate_simulation_params(params::AbstractDict)
             push!(errors, (key, "$(meta["label"]) must be ≤ $mx $(meta["unit"])"))
         end
     end
+
+    # Fimbul.btes divides wells evenly into num_sectors and special-cases the
+    # innermost/outermost well of each sector — a sector left with exactly one
+    # well hits both special cases at once and Fimbul indexes past the end of a
+    # 1-element array. Catch it here with a clear message instead of a bare
+    # BoundsError from inside the simulator.
+    if case_type == "BTES"
+        n = _numeric(get(parameters, "num_wells_btes", nothing))
+        s = _numeric(get(parameters, "num_sectors", nothing))
+        if n !== nothing && s !== nothing && s > 0 && n < 2 * s
+            push!(errors, ("num_wells_btes",
+                "Number of wells must be at least 2x the number of sectors " *
+                "(need $(round(Int, 2 * s)) wells for $(round(Int, s)) sectors, " *
+                "or fewer sectors) — each sector needs at least 2 wells"))
+        end
+    end
+
     return errors
 end
 
