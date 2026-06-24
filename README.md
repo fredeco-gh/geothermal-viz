@@ -87,8 +87,8 @@ Other well types (GrunnvannBrønn, Sonderboring, etc.) are displayed on the map 
 
 The application uses a **single Julia server** architecture:
 
-- **Backend (Julia)**: Handles data processing (ArchGDAL), HTTP serving (HTTP.jl), parameter mapping, and Fimbul.jl simulation. All simulation logic and parameter defaults live here — the frontend has no duplicated constants.
-- **Frontend (JavaScript)**: MapLibre GL JS for map rendering, thin simulation panel that calls the Julia API. The JS layer handles only UI rendering and API calls.
+- **Backend (Julia)**: Handles data processing (ArchGDAL), HTTP serving (HTTP.jl), and parameter mapping (`well_to_simulation_params`/`validate_simulation_params`). Parameter defaults live here — the frontend has no duplicated constants.
+- **Frontend (JavaScript)**: MapLibre GL JS for map rendering, thin simulation setup panel that calls the Julia API. *Running* a simulation and viewing its results happen on [jutul-agent](https://github.com/fredeco-gh/jutul-agent-geothermal)'s own Julia kernel instead (see its `examples/geothermal-viz-app/`) — this server only resolves a well's starting parameters; it no longer runs Fimbul itself.
 
 ### API Endpoints
 
@@ -97,7 +97,6 @@ The application uses a **single Julia server** architecture:
 | `/api/layers` | GET | List available GeoJSON layers |
 | `/api/data/{layer}` | GET | Get GeoJSON data for a layer |
 | `/api/simulation/setup` | POST | Convert well properties to simulation parameters |
-| `/api/simulation/run` | POST | Run a Fimbul.jl simulation |
 | `/api/health` | GET | Health check |
 
 ## Data Layers

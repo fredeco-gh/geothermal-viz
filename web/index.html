@@ -74,20 +74,14 @@
 
     <button id="sidebar-toggle" class="sidebar-toggle" title="Toggle sidebar">☰</button>
 
-    <!-- Simulation side panel (right) -->
+    <!-- Simulation side panel (right): well setup only. Running a simulation and
+         viewing its results both happen in the jutul-agent chat now, not here. -->
     <div id="sim-panel" class="sim-panel">
         <div class="sim-panel-header">
             <h2 id="sim-panel-title">Simulation Setup</h2>
             <button id="btn-close-sim" class="btn-icon" title="Close">✕</button>
         </div>
 
-        <!-- Mode tabs -->
-        <div class="sim-tabs">
-            <button class="sim-tab active" data-tab="setup">⚙️ Setup</button>
-            <button class="sim-tab" data-tab="results">📊 Results</button>
-        </div>
-
-        <!-- Setup mode -->
         <div id="sim-setup" class="sim-tab-content active">
             <div class="sim-case-info" id="sim-case-info"></div>
             <div class="sim-params" id="sim-params"></div>
@@ -95,17 +89,6 @@
                 <button id="btn-run-sim" class="btn-primary btn-run">▶ Run Simulation</button>
             </div>
             <div id="sim-status" class="sim-status" style="display:none;"></div>
-            <div id="sim-output-log" class="sim-output-log" style="display:none;">
-                <h4>Simulation Output</h4>
-                <div id="sim-log-content" class="sim-log-content"></div>
-            </div>
-        </div>
-
-        <!-- Results mode -->
-        <div id="sim-results" class="sim-tab-content">
-            <div id="sim-results-content">
-                <p class="no-selection">Run a simulation to view results here.</p>
-            </div>
         </div>
     </div>
 

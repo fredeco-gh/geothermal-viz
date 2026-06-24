@@ -192,29 +192,4 @@ using JSON3
         @test result2["status"] == "completed"
         @test haskey(result2["well_data"], "BTES Array")
     end
-
-    @testset "Simulation — Async Start and Status" begin
-        using GeothermalViz
-
-        # Status before any simulation
-        status = get_simulation_status()
-        @test haskey(status, "running")
-        @test haskey(status, "log")
-        @test haskey(status, "result")
-
-        # Start async mock simulation
-        props = Dict("layer" => "EnergiBrønn", "boretLengde" => 200.0)
-        setup = well_to_simulation_params(props)
-        start_result = start_simulation_async(setup; mock=true)
-        @test start_result["status"] == "started"
-
-        # Wait for completion (mock is fast)
-        sleep(2.0)
-
-        status = get_simulation_status()
-        @test status["running"] == false
-        @test status["result"] !== nothing
-        @test status["result"]["status"] == "completed"
-        @test length(status["log"]) > 0
-    end
 end

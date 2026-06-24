@@ -23,13 +23,6 @@ using Jutul
 using JutulDarcy
 import Base64: base64encode
 
-# ── Async simulation state ───────────────────────────────────────────────────
-
-const _sim_lock = ReentrantLock()
-const _sim_log = Ref{Vector{String}}(String[])
-const _sim_running = Ref{Bool}(false)
-const _sim_result = Ref{Any}(nothing)
-
 # ── Server-side state for lazy reservoir image rendering ─────────────────────
 
 const _sim_case = Ref{Any}(nothing)
@@ -39,98 +32,13 @@ const _image_cache = Dict{String, String}()
 const _colorrange_cache = Dict{String, Tuple{Float64, Float64}}()
 const _render_lock = ReentrantLock()
 
-"""Push a log message to the simulation log (thread-safe)."""
+"""Print a timestamped progress line.
+
+The caller (a Julia kernel eval with `on_chunk` streaming) picks these up live
+from stdout, the same way `run_julia` streams any other long computation's
+output — there is no separate log to poll here."""
 function _sim_log_push!(msg::AbstractString)
-    lock(_sim_lock) do
-        push!(_sim_log[], "[$(Dates.format(now(), "HH:mm:ss"))] $msg")
-    end
-end
-
-"""
-    _capture_output(f) -> result
-
-Run `f()` while capturing everything written to stdout and stderr.
-Captured lines are pushed to the simulation log via `_sim_log_push!`.
-"""
-function _capture_output(f)
-    original_stdout = stdout
-    original_stderr = stderr
-    out_rd, out_wr = redirect_stdout()
-    err_rd, err_wr = redirect_stderr()
-    output = Channel{String}(Inf)
-    # Reader tasks: forward lines to the channel
-    reader_out = @async begin
-        for line in eachline(out_rd)
-            put!(output, line)
-        end
-    end
-    reader_err = @async begin
-        for line in eachline(err_rd)
-            put!(output, line)
-        end
-    end
-    # Consumer: push captured lines to the simulation log
-    consumer = @async begin
-        for line in output
-            _sim_log_push!(line)
-        end
-    end
-    try
-        return f()
-    finally
-        redirect_stdout(original_stdout)
-        redirect_stderr(original_stderr)
-        close(out_wr)
-        close(err_wr)
-        wait(reader_out)
-        wait(reader_err)
-        close(output)
-        wait(consumer)
-    end
-end
-
-"""Get a snapshot of the simulation status (thread-safe)."""
-function get_simulation_status()
-    lock(_sim_lock) do
-        Dict{String,Any}(
-            "running" => _sim_running[],
-            "log"     => copy(_sim_log[]),
-            "result"  => _sim_result[],
-        )
-    end
-end
-
-"""Start a simulation asynchronously. Returns immediately."""
-function start_simulation_async(setup::AbstractDict; mock::Bool=false)
-    if _sim_running[]
-        return Dict{String,Any}("status" => "error", "message" => "A simulation is already running.")
-    end
-
-    lock(_sim_lock) do
-        _sim_log[] = String[]
-        _sim_running[] = true
-        _sim_result[] = nothing
-    end
-
-    Threads.@spawn begin
-        try
-            result = run_fimbul_simulation(setup; mock=mock)
-            lock(_sim_lock) do
-                _sim_result[] = result
-                _sim_running[] = false
-            end
-        catch e
-            lock(_sim_lock) do
-                _sim_result[] = Dict{String,Any}(
-                    "status"  => "error",
-                    "message" => "Simulation failed: $(sprint(showerror, e))",
-                )
-                _sim_running[] = false
-            end
-        end
-    end
-
-    return Dict{String,Any}("status" => "started", "message" => "Simulation started.")
+    println("[$(Dates.format(now(), "HH:mm:ss"))] $msg")
 end
 
 # ── Physical constants for parameter estimation ──────────────────────────────
@@ -479,10 +387,10 @@ function _run_fimbul_live(case_type, params)
         _sim_log_push!("Case created. Starting reservoir simulation...")
         _sim_log_push!("This may take several minutes depending on model size.")
 
-        # Simulate while capturing stdout/stderr (Fimbul progress bars etc.)
-        results = _capture_output() do
-            Fimbul.simulate_reservoir(case)
-        end
+        # Fimbul's own progress output (progress bars etc.) goes straight to
+        # stdout; the caller's kernel eval streams it live, same as any other
+        # long-running Julia computation — no manual capture needed here.
+        results = Fimbul.simulate_reservoir(case)
 
         _sim_log_push!("Simulation completed. Extracting results...")
 

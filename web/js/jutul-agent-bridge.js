@@ -85,6 +85,19 @@
                 case "simulationClosed":
                     sendToAgent({ event: "simulationClosed" });
                     break;
+                case "simulationRunRequested":
+                    // Distinguished from the events above (which just become passive
+                    // ui_events the agent learns about on its next message) — this
+                    // one needs to actually run *now*, with these exact parameters,
+                    // so host-extension.js sends it as a direct action instead. See
+                    // jutul-agent's examples/geothermal-viz-app/capability.py's
+                    // run_simulation_action.
+                    sendToAgent({
+                        event: "simulationRunRequested",
+                        caseType: data.caseType,
+                        parameters: data.parameters,
+                    });
+                    break;
                 }
             },
         });
