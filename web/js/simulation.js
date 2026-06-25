@@ -59,6 +59,10 @@ async function openSimPanel() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(props),
         });
+        if (!resp.ok) {
+            console.error("Simulation setup failed:", resp.status, await resp.text());
+            return;
+        }
         const setup = await resp.json();
 
         if (!setup.simulatable) {
